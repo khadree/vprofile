@@ -14,36 +14,32 @@ import java.util.concurrent.TimeoutException;
 public class ProducerServiceImpl implements ProducerService {
 
     /**
-     *  The name of the Exchange
+     * The name of the Exchange
      */
     private static final String EXCHANGE_NAME = "messages";
 
     /**
-     *  This method publishes a message
+     * This method publishes a message
      * @param message
      */
     @Override
     public String produceMessage(String message) {
-        try {
-            ConnectionFactory factory = new ConnectionFactory();
-            /**
-            * System.out.println("Rabitmq host: ::" + RabbitMqUtil.getRabbitMqHost());
-            * System.out.println("Rabitmq port: ::" + RabbitMqUtil.getRabbitMqPort());
-            * System.out.println("Rabitmq user: ::" + RabbitMqUtil.getRabbitMqUser());
-            * System.out.println("Rabitmq password: ::" + RabbitMqUtil.getRabbitMqPassword());
-            **/
-            factory.setHost(RabbitMqUtil.getRabbitMqHost());
-            factory.setPort(Integer.parseInt(RabbitMqUtil.getRabbitMqPort()));
-            factory.setUsername(RabbitMqUtil.getRabbitMqUser());
-            factory.setPassword(RabbitMqUtil.getRabbitMqPassword());
-            Connection connection = factory.newConnection();
-            System.out.println("Connection open status"+connection.isOpen());
-            Channel channel = connection.createChannel();
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost(RabbitMqUtil.getRabbitMqHost());
+        factory.setPort(Integer.parseInt(RabbitMqUtil.getRabbitMqPort()));
+        factory.setUsername(RabbitMqUtil.getRabbitMqUser());
+        factory.setPassword(RabbitMqUtil.getRabbitMqPassword());
+
+        // try-with-resources ensures both Connection and Channel are always
+        // closed on exit, even if an exception is thrown mid-way
+        try (Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
+
+            System.out.println("Connection open status: " + connection.isOpen());
             channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
             channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes());
             System.out.println(" [x] Sent '" + message + "'");
-            channel.close();
-            connection.close();
+
         } catch (IOException io) {
             System.out.println("IOException");
             io.printStackTrace();
