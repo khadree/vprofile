@@ -1,0 +1,176 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REPOSITORY: ${{ secrets.ECR_REPO_NAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # JOB 1: TEST + ANALYSIS + PUBLISH ARTIFACT
+    # Runs on every push and PR to main
+  test-and-analyse:
+    name: Test, Analyse & Publish Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history required for SonarCloud blame data
+
+      # ── Java Setup ──────────────────────────────────────────
+      # setup-java auto-configures ~/.m2/settings.xml using the built-in
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'             # Matches maven.compiler.source in your pom.xml
+          distribution: 'temurin'
+          server-id: github              # Must match <id> in distributionManagement
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_TOKEN   # Env var name — mapped below in the deploy step
+
+      # ── Cache Maven dependencies ─────────────────────────────
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # ── Stage: UNIT TEST ─────────────────────────────────────
+      - name: Unit Test
+        run: mvn test
+
+      # ── Stage: INTEGRATION TEST ──────────────────────────────
+      - name: Integration Test
+        run: mvn verify -DskipUnitTests
+
+      # ── Stage: CODE ANALYSIS WITH CHECKSTYLE ─────────────────
+      - name: Code Analysis with Checkstyle
+        run: mvn checkstyle:checkstyle
+
+      # ── Stage: CODE ANALYSIS WITH SONARCLOUD ─────────────────
+      - name: Code Analysis with SonarCloud
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Custom secret — does NOT start with GITHUB_
+        run: |
+          mvn verify sonar:sonar \
+            -DskipTests \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORG }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.projectName=vprofile-repo \
+            -Dsonar.projectVersion=1.0 \
+            -Dsonar.sources=src/ \
+            -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
+            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+            -Dsonar.jacoco.reportsPath=target/jacoco.exec \
+            -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
+
+      # ── SonarCloud Quality Gate ───────────────────────────────
+      # Uses secrets.GITHUB_TOKEN (built-in, reserved by GitHub — always available,
+      # you never create this one yourself).
+      - name: SonarCloud Quality Gate
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Built-in token — not a custom secret
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+
+      # ── Stage: PUBLISH TO GITHUB PACKAGES ────────────────────
+      # MAVEN_USERNAME and MAVEN_TOKEN are the env var names that
+      # setup-java wired into ~/.m2/settings.xml above.
+      # secrets.GITHUB_TOKEN is the built-in token — no custom secret needed here.
+      - name: Publish Artifact to GitHub Packages
+        run: mvn --batch-mode deploy -DskipTests
+        env:
+          MAVEN_USERNAME: ${{ github.actor }}
+          MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # Built-in — always available
+
+      # ── Upload WAR as pipeline artifact ──────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-artifact
+          path: target/*.war
+          retention-days: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 2: BUILD & PUSH DOCKER IMAGE TO ECR
+  # Runs only on push to main, after Job 1 passes
+  # ─────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Image to ECR
+    runs-on: ubuntu-latest
+    needs: test-and-analyse
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Build WAR (skip tests — already ran in Job 1)
+      - name: Build artifact
+        run: mvn package -DskipTests
+
+      # ── Configure AWS credentials ─────────────────────────────
+      # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are custom secrets
+      # injected automatically by Terraform (github_secrets.tf).
+      # Neither starts with GITHUB_ so both are valid secret names.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Login to ECR ──────────────────────────────────────────
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Build, tag and push Docker image ─────────────────────
+      - name: Build, tag, and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag  $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                      $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      # ── Deploy to ECS ─────────────────────────────────────────
+      # Uncomment once your ECS service is running (desired_count > 0 in Terraform)
+      # - name: Update ECS service
+      #   run: |
+      #     aws ecs update-service \
+      #       --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+      #       --service ${{ secrets.ECS_SERVICE_NAME }} \
+      #       --force-new-deployment
