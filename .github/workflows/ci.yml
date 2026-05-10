@@ -174,3 +174,7 @@ jobs:
       #       --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
       #       --service ${{ secrets.ECS_SERVICE_NAME }} \
       #       --force-new-deployment
+
+
+##### Note: The above workflow assumes you have the following secrets set in your GitHub repository:
+# - SONAR_TOKEN: Your SonarCloud token for authentication
