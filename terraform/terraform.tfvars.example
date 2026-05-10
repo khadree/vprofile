@@ -1,0 +1,18 @@
+project_name      = "your-project-name"
+region            = "eu-west-1"
+s3_bucket = {
+  "app-data" = {} # Uses default module values
+  # "user-assets" = {}
+}
+
+alb = {
+  "app-alb" = {
+    # ALB Configuration
+  }
+}
+
+github_token      = "github_pat_..."
+github_repo       = "your-repo-name"          # just the name, not owner/name
+sonar_token       = "your-sonarcloud-token"
+sonar_project_key = "your-org_your-repo"
+sonar_org         = "your-github-username"
