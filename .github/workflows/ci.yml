@@ -61,7 +61,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   
         run: |
-          mvn verify sonar:sonar \
+          mvn sonar:sonar \
             -DskipTests \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ secrets.SONAR_ORG }} \
