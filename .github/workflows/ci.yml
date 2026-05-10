@@ -59,7 +59,7 @@ jobs:
       # ── Stage: CODE ANALYSIS WITH SONARCLOUD ─────────────────
       - name: Code Analysis with SonarCloud
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Custom secret — does NOT start with GITHUB_
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   
         run: |
           mvn verify sonar:sonar \
             -DskipTests \
@@ -69,8 +69,6 @@ jobs:
             -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.projectName=vprofile-repo \
             -Dsonar.projectVersion=1.0 \
-            -Dsonar.sources=src/ \
-            -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
             -Dsonar.junit.reportsPath=target/surefire-reports/ \
             -Dsonar.jacoco.reportsPath=target/jacoco.exec \
             -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
@@ -175,6 +173,5 @@ jobs:
       #       --service ${{ secrets.ECS_SERVICE_NAME }} \
       #       --force-new-deployment
 
-
-##### Note: The above workflow assumes you have the following secrets set in your GitHub repository:
-# - SONAR_TOKEN: Your SonarCloud token for authentication
+#           -Dsonar.sources=src/ \
+ #           -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
