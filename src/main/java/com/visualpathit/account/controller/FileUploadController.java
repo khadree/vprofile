@@ -28,8 +28,6 @@ public class FileUploadController {
     private static final Logger logger = LoggerFactory
             .getLogger(FileUploadController.class);
 
-    // Define the upload directory and its normalized path once at class level —
-    // same pattern as the Sonar compliant solution
     private static final String TARGET_DIRECTORY =
             System.getProperty("catalina.home") + File.separator + "tmpFiles";
     private static final Path TARGET_PATH =
@@ -50,18 +48,18 @@ public class FileUploadController {
             @RequestParam("file") MultipartFile file) {
 
         System.out.println("Called the upload file :::");
+
+        // Sanitize FIRST — before name is used anywhere in a response
+        String safeName = new File(name).getName()
+                .replaceAll("[^a-zA-Z0-9._-]", "_");
+
+        if (safeName.isEmpty()) {
+            return "You failed to upload: invalid file name.";
+        }
+
         if (!file.isEmpty()) {
             try {
                 byte[] bytes = file.getBytes();
-
-                // Sanitize filename — strip directory components and
-                // whitelist only safe characters
-                String safeName = new File(name).getName()
-                        .replaceAll("[^a-zA-Z0-9._-]", "_");
-
-                if (safeName.isEmpty()) {
-                    return "You failed to upload: invalid file name.";
-                }
 
                 // Ensure the upload directory exists
                 File dir = TARGET_PATH.toFile();
@@ -71,8 +69,7 @@ public class FileUploadController {
                 // Build the target file path
                 File serverFile = new File(TARGET_DIRECTORY + File.separator + safeName + ".png");
 
-                // Path traversal check using toPath().normalize() —
-                // matches the Sonar compliant solution exactly
+                // Path traversal check — toPath().normalize() matches Sonar compliant solution
                 if (!serverFile.toPath().normalize().startsWith(TARGET_PATH)) {
                     throw new IOException("Entry is outside of the target directory");
                 }
@@ -93,10 +90,12 @@ public class FileUploadController {
                 return "You successfully uploaded file=" + safeName + ".png";
 
             } catch (Exception e) {
-                return "You failed to upload " + name + ".png" + " => " + e.getMessage();
+                // Use safeName — never reflect raw user input back in a response
+                return "You failed to upload " + safeName + ".png" + " => " + e.getMessage();
             }
         } else {
-            return "You failed to upload " + name + ".png"
+            // Use safeName — never reflect raw user input back in a response
+            return "You failed to upload " + safeName + ".png"
                     + " because the file was empty.";
         }
     }
