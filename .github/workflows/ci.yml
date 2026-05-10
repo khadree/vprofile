@@ -77,15 +77,15 @@ jobs:
          -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
   
 
-      # ── Stage: PUBLISH TO GITHUB PACKAGES ────────────────────
-      # MAVEN_USERNAME and MAVEN_TOKEN are the env var names that
-      # setup-java wired into ~/.m2/settings.xml above.
-      # secrets.GITHUB_TOKEN is the built-in token — no custom secret needed here.
+          
+      # ── Stage: PUBLISH ARTIFACT TO GITHUB PACKAGES ─────────────────────────────
+      - name: Set unique artifact version
+        run: mvn versions:set -DnewVersion=1.0.${{ github.run_number }} -DgenerateBackupPoms=false
       - name: Publish Artifact to GitHub Packages
         run: mvn --batch-mode deploy -DskipTests
         env:
           MAVEN_USERNAME: ${{ github.actor }}
-          MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # Built-in — always available
+          MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
 
       # ── Upload WAR as pipeline artifact ──────────────────────
       - name: Upload build artifact

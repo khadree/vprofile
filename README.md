@@ -1,4 +1,4 @@
-# Damolak — CI/CD on AWS ECS Fargate
+# Vprofile — CI/CD on AWS ECS Fargate
 
 A Spring MVC Java web application with a fully automated CI/CD pipeline. Infrastructure is provisioned by Terraform before the pipeline runs. GitHub Actions handles testing, code analysis, artifact publishing, and Docker image delivery to AWS ECR — with zero manual steps.
 
