@@ -3,6 +3,8 @@ package com.visualpathit.account.controller;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -26,6 +28,13 @@ public class FileUploadController {
     private static final Logger logger = LoggerFactory
             .getLogger(FileUploadController.class);
 
+    // Define the upload directory and its normalized path once at class level —
+    // same pattern as the Sonar compliant solution
+    private static final String TARGET_DIRECTORY =
+            System.getProperty("catalina.home") + File.separator + "tmpFiles";
+    private static final Path TARGET_PATH =
+            new File(TARGET_DIRECTORY).toPath().normalize();
+
     /**
      * Upload single file using Spring Controller
      */
@@ -45,34 +54,44 @@ public class FileUploadController {
             try {
                 byte[] bytes = file.getBytes();
 
-                // Creating the directory to store file
-                String rootPath = System.getProperty("catalina.home");
-                System.out.println("Path ::::" + rootPath);
-                File dir = new File(rootPath + File.separator + "tmpFiles");
+                // Sanitize filename — strip directory components and
+                // whitelist only safe characters
+                String safeName = new File(name).getName()
+                        .replaceAll("[^a-zA-Z0-9._-]", "_");
+
+                if (safeName.isEmpty()) {
+                    return "You failed to upload: invalid file name.";
+                }
+
+                // Ensure the upload directory exists
+                File dir = TARGET_PATH.toFile();
                 if (!dir.exists())
                     dir.mkdirs();
 
-                // Create the file on server
-                File serverFile = new File(dir.getAbsolutePath()
-                        + File.separator + name + ".png");
+                // Build the target file path
+                File serverFile = new File(TARGET_DIRECTORY + File.separator + safeName + ".png");
+
+                // Path traversal check using toPath().normalize() —
+                // matches the Sonar compliant solution exactly
+                if (!serverFile.toPath().normalize().startsWith(TARGET_PATH)) {
+                    throw new IOException("Entry is outside of the target directory");
+                }
 
                 // Image saving
                 User user = userService.findByUsername(userName);
-                user.setProfileImg(name + ".png");
+                user.setProfileImg(safeName + ".png");
                 user.setProfileImgPath(serverFile.getAbsolutePath());
                 userService.save(user);
 
-                // try-with-resources ensures stream is always closed,
-                // even if stream.write(bytes) throws an exception
+                // try-with-resources ensures stream is always closed
                 try (BufferedOutputStream stream = new BufferedOutputStream(
                         new FileOutputStream(serverFile))) {
                     stream.write(bytes);
                 }
 
-                logger.info("Server File Location="
-                        + serverFile.getAbsolutePath());
+                logger.info("Server File Location=" + serverFile.getAbsolutePath());
+                return "You successfully uploaded file=" + safeName + ".png";
 
-                return "You successfully uploaded file=" + name + ".png";
             } catch (Exception e) {
                 return "You failed to upload " + name + ".png" + " => " + e.getMessage();
             }
