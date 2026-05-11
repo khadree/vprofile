@@ -161,6 +161,3 @@ jobs:
       #       --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
       #       --service ${{ secrets.ECS_SERVICE_NAME }} \
       #       --force-new-deployment
-
-#           -Dsonar.sources=src/ \
- #           -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \

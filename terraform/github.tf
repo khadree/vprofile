@@ -88,3 +88,16 @@ resource "github_actions_secret" "sonar_org" {
   secret_name = "SONAR_ORG"
   value       = var.sonar_org  
 }
+
+
+resource "github_actions_secret" "ecs_service_name" {
+  repository  = var.github_repo
+  secret_name = "ECS_SERVICE_NAME"
+  value       = module.ecs.ecs_service_name  
+}
+
+resource "github_actions_secret" "ecs_cluster_name" {
+  repository  = var.github_repo
+  secret_name = "ECS_CLUSTER_NAME"
+  value       = module.ecs.ecs_cluster_name  
+}

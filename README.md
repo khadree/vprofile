@@ -137,6 +137,8 @@ JaCoCo is configured in `pom.xml` to generate a coverage report during the build
 
 The ECS service is initially set to `desired_count = 0`. This means no tasks are running after `terraform apply`, which avoids charges while the first image is being built. Once the pipeline pushes the first image to ECR, uncomment the ECS update step in the workflow to trigger a deployment, then increase `desired_count` to 1 or more in Terraform.
 
+Manually you can update the ECS Service Desired tasks to 1 on AWS Console to start the service after the image has been push to ECR for easy testing.
+
 ### Private subnets for ECS tasks
 
 ECS tasks run in private subnets and communicate with the internet through a NAT gateway. The ALB sits in public subnets and forwards traffic to the ECS tasks. This means:
