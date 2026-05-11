@@ -165,8 +165,8 @@ Logs are retained for 7 days to keep CloudWatch storage costs low during develop
 ### 1. Clone and configure variables
 
 ```bash
-git clone [here](https://github.com/khadree/damolak.git)
-cd https://github.com/khadree/damolak/terraform
+git clone https://github.com/khadree/damolak.git
+cd /terraform
 cp terraform.tfvars.example terraform.tfvars
 ```
 
@@ -268,3 +268,4 @@ And the state file can be stored in a terraform cloud or object storage like S3 
 ## Result
 
 The final outputs when the LoadBalancer DNS is been accessed See the systems/ folder for result.png
+Ensure that when accessing the LoadBalancer DNS it should be http:// not https:// because a certificate is not attached to the LoadBalancer.
