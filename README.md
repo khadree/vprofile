@@ -166,7 +166,7 @@ Logs are retained for 7 days to keep CloudWatch storage costs low during develop
 
 ```bash
 git clone https://github.com/khadree/damolak.git
-cd /terraform
+cd terraform/
 cp terraform.tfvars.example terraform.tfvars
 ```
 
