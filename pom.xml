@@ -312,13 +312,11 @@
         </plugins>
     </build>
 
-    <!-- GitHub Packages - artifact repository (replaces Nexus) -->
-    <!-- Replace YOUR_GITHUB_USERNAME and YOUR_REPO_NAME with real values -->
     <distributionManagement>
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/khadree/damolak</url>
+            <url>https://maven.pkg.github.com/khadree/vprofile</url>
         </repository>
     </distributionManagement>
 

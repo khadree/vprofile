@@ -2,6 +2,8 @@
 
 A Spring MVC Java web application with a fully automated CI/CD pipeline. Infrastructure is provisioned by Terraform before the pipeline runs. GitHub Actions handles testing, code analysis, artifact publishing, and Docker image delivery to AWS ECR — with zero manual steps.
 
+The terraform code deploy an application to AWS ECS, provisiong the VPC,ECS cluster,ECS service, Container Registry, Target Group, Application load Balancer.
+
 ---
 
 ## Architecture overview
